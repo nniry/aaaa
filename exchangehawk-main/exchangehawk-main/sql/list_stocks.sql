@@ -1,0 +1,1 @@
+SELECT symbol FROM stocks;

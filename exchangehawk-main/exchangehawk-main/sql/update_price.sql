@@ -1,0 +1,1 @@
+INSERT INTO stock_prices (stock_symbol, price) VALUES (?,?);

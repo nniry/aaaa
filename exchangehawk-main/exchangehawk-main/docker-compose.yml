@@ -1,0 +1,71 @@
+services:
+  db:
+    container_name: db
+    build:
+      context: ./
+      dockerfile: ./Dockerfiles/Database.Dockerfile
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfiles/Frontend.Dockerfile
+    container_name: 'frontend'
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/:/var/www/
+    env_file:
+      - .env
+  parser:
+    container_name: 'parser'
+    build:
+      dockerfile: ../Dockerfiles/Parser.Dockerfile
+      context: ./parser
+    env_file:
+      - .env
+      - .alphavantage
+    expose:
+      - "88"
+    # Uncomment to access swagger
+    ports:
+      - "88:88"
+    volumes:
+      - ./parser/:/usr/src/parser/
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    hostname: rabbitmq
+    user: root
+    container_name: rabbitmq
+    command: rabbitmq-server start
+    env_file:
+      - .env
+    expose:
+      - "5672"
+    volumes:
+      - ./rabbitmq/:/etc/rabbitmq/
+  celery:
+    user: root
+    restart: always
+    build:
+      dockerfile: ../Dockerfiles/Parser.Dockerfile
+      context: ./parser
+    container_name: celery
+    command: bash -c "sleep 10; celery -A tasks worker -B -E --loglevel=warning -f /logs/celery.log -l INFO"
+    volumes:
+      - .:/usr/src/
+      - ./logs/:/logs/
+      - ./sql/:/var/sqlscripts/
+    depends_on:
+      - parser
+      - rabbitmq
+    links:
+      - rabbitmq
+    env_file:
+      - .env
+volumes:
+  postgres_data:
